@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import multipart from '@fastify/multipart';
 import { healthRoutes } from './routes/health.routes.js';
 import { storageRoutes } from './routes/storage.routes.js';
+import { webhookRoutes } from './routes/webhook.routes.js';
 import { config } from './config/env.js';
 
 export function buildApp(): FastifyInstance {
@@ -20,6 +21,7 @@ export function buildApp(): FastifyInstance {
   // Register routes
   app.register(healthRoutes);
   app.register(storageRoutes);
+  app.register(webhookRoutes);
 
   return app;
 }

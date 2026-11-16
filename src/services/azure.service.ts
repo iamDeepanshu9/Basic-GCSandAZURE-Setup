@@ -11,11 +11,9 @@ export interface AzureUploadResult {
   contentType: string;
   size?: number;
   defenderScanning: {
-    status: 'Completed' | 'Scanning' | 'Failed';
-    scanResult: 'No threats found' | 'Malicious' | 'Pending';
-    scannedAt: string;
-    threatDetails: string | null;
-    engine: string;
+    status: 'Pending' | 'Completed';
+    message: string;
+    webhookEndpoint: string;
   };
 }
 
@@ -39,6 +37,10 @@ export class AzureStorageService {
 
   /**
    * Streams a file from a Readable stream directly into an Azure Blob.
+   *
+   * After upload, Microsoft Defender for Storage scans the blob asynchronously.
+   * Scan results are delivered via Event Grid webhook to POST /api/webhook/scan-result.
+   * Query the result later with POST /api/scan-status { documentId }.
    */
   async uploadStream(
     blobName: string,
@@ -49,7 +51,7 @@ export class AzureStorageService {
     const containerClient = await this.getContainerClient();
     const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
-    const scanTimestamp = new Date().toISOString();
+    const uploadedAt = new Date().toISOString();
 
     const uploadOptions = {
       blobHTTPHeaders: {
@@ -57,12 +59,7 @@ export class AzureStorageService {
       },
       metadata: {
         ...customMetadata,
-        uploadedAt: scanTimestamp,
-        scanResult: 'No threats found',
-      },
-      tags: {
-        'Malware Scanning scan result': 'No threats found',
-        'Malware Scanning scan time UTC': scanTimestamp,
+        uploadedAt,
       },
     };
 
@@ -78,14 +75,15 @@ export class AzureStorageService {
       blobName,
       blobUrl: blockBlobClient.url,
       etag: uploadResponse.etag,
-      lastModified: uploadResponse.lastModified ? uploadResponse.lastModified.toISOString() : scanTimestamp,
+      lastModified: uploadResponse.lastModified
+        ? uploadResponse.lastModified.toISOString()
+        : uploadedAt,
       contentType,
       defenderScanning: {
-        status: 'Completed',
-        scanResult: 'No threats found',
-        scannedAt: scanTimestamp,
-        threatDetails: null,
-        engine: 'Microsoft Defender for Storage',
+        status: 'Pending',
+        message:
+          'Defender for Storage will scan this blob asynchronously. Results are delivered via Event Grid to POST /api/webhook/scan-result. Query scan status with POST /api/scan-status.',
+        webhookEndpoint: '/api/webhook/scan-result',
       },
     };
   }
