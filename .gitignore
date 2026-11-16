@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.azurite/
+.env
+*.log
+.DS_Store
+serviceAccount.json
+service-account.json
+*credentials*.json
+*key*.json
